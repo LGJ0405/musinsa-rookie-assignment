@@ -77,3 +77,5 @@
   - GET /students -> 3명 반환
   - GET /courses -> 5개 강좌 반환 (정원/현재인원/시간 포함)
   - GET /me/timetable (X-Student-Id: 1) -> semester_id=2, items=[]
+- Step5 규칙 테스트: `python -m unittest src/tests/test_enrollment_rules.py`
+  - credit limit / time conflict / duplicate / cancel 검증 OK

@@ -51,3 +51,15 @@ class TimetableOut(BaseModel):
     semester_id: int
     total_credits: int
     items: list[TimetableItem]
+
+
+class EnrollmentCreate(BaseModel):
+    course_id: int
+
+
+class EnrollmentOut(BaseModel):
+    id: int
+    student_id: int
+    course_id: int
+    semester_id: int
+    created_at: str

@@ -93,6 +93,16 @@ CREATE INDEX IF NOT EXISTS idx_enrollments_student ON enrollments(student_id);
 CREATE INDEX IF NOT EXISTS idx_course_times_course ON course_times(course_id);
 """
 
+DROP_SQL = """
+DROP TABLE IF EXISTS enrollments;
+DROP TABLE IF EXISTS course_times;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS semesters;
+DROP TABLE IF EXISTS students;
+DROP TABLE IF EXISTS professors;
+DROP TABLE IF EXISTS departments;
+"""
+
 
 def init_db() -> None:
     conn = get_connection()
@@ -236,7 +246,17 @@ def seed_db() -> None:
 
 def reset_db() -> None:
     if DB_PATH.exists():
-        DB_PATH.unlink()
+        try:
+            DB_PATH.unlink()
+            init_db()
+            seed_db()
+            return
+        except PermissionError:
+            pass
+
+    conn = get_connection()
+    with conn:
+        conn.executescript(DROP_SQL)
     init_db()
     seed_db()
 
