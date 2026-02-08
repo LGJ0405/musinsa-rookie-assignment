@@ -1,0 +1,6 @@
+....
+----------------------------------------------------------------------
+Ran 4 tests in 6.635s
+
+OK
+Seeded data in 6.60s: departments=12, professors=100, students=10000, courses=500

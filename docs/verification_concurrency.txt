@@ -1,0 +1,7 @@
+.
+----------------------------------------------------------------------
+Ran 1 test in 6.848s
+
+OK
+Seeded data in 6.58s: departments=12, professors=100, students=10000, courses=500
+success=1 fail=99 enrolled_count=1

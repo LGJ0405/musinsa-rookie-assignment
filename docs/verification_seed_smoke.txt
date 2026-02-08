@@ -1,0 +1,7 @@
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.175s
+
+OK
+Seed skipped: required counts already satisfied.
+counts: departments=12, professors=100, students=10000, courses=500, elapsed=0.17s

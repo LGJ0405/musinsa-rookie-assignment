@@ -1,0 +1,1 @@
+Seeded data in 7.20s: departments=12, professors=100, students=10000, courses=500

@@ -11,11 +11,11 @@ if (-not (Test-Path $PythonExe)) {
 
 $Docs = Join-Path $Root "docs"
 $EnvLog = Join-Path $Docs "verification_env.txt"
-$SeedLog = Join-Path $Docs "verification_seed_reset.txt"
+$SeedLog = Join-Path $Docs "verification_seed.txt"
 $HealthLog = Join-Path $Docs "verification_health.txt"
-$TestSeedLog = Join-Path $Docs "verification_test_seed_smoke.txt"
-$TestRulesLog = Join-Path $Docs "verification_test_enrollment_rules.txt"
-$TestConcLog = Join-Path $Docs "verification_test_concurrency_capacity.txt"
+$TestSeedLog = Join-Path $Docs "verification_seed_smoke.txt"
+$TestRulesLog = Join-Path $Docs "verification_rules.txt"
+$TestConcLog = Join-Path $Docs "verification_concurrency.txt"
 
 Push-Location $Root
 try {

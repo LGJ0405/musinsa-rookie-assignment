@@ -26,6 +26,18 @@ class SeedSmokeTest(unittest.TestCase):
 
         elapsed = time.perf_counter() - start
 
+        department_ids = {course["department_id"] for course in courses}
+        department_count = len(department_ids)
+        print(
+            "counts: "
+            f"departments={department_count}, "
+            f"professors={len(professors)}, "
+            f"students={len(students)}, "
+            f"courses={len(courses)}, "
+            f"elapsed={elapsed:.2f}s"
+        )
+
+        self.assertGreaterEqual(department_count, 10)
         self.assertGreaterEqual(len(students), 10_000)
         self.assertGreaterEqual(len(courses), 500)
         self.assertGreaterEqual(len(professors), 100)

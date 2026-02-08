@@ -4,6 +4,7 @@ import os
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 from fastapi import HTTPException
 
@@ -30,9 +31,12 @@ class ConcurrencyCapacityTest(unittest.TestCase):
             ]
         conn.close()
 
+        barrier = Barrier(len(student_ids))
+
         def attempt(student_id: int) -> str:
             local = db.get_connection()
             try:
+                barrier.wait(timeout=10)
                 create_enrollment(local, student_id, course_id)
                 return "success"
             except HTTPException as exc:
@@ -55,6 +59,7 @@ class ConcurrencyCapacityTest(unittest.TestCase):
         print(f"success={success_count} fail={fail_count} enrolled_count={enrolled_count}")
 
         self.assertEqual(success_count, 1)
+        self.assertEqual(fail_count, 99)
         self.assertEqual(enrolled_count, 1)
 
 

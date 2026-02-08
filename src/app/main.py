@@ -41,8 +41,10 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError) 
     )
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
+@app.get("/health", response_model=None)
+def health(request: Request):
+    if not getattr(request.app.state, "data_ready", False):
+        return JSONResponse(status_code=503, content={"status": "starting"})
     return {"status": "ok"}
 
 
