@@ -80,6 +80,7 @@
 
 
 ## 검증 로그
+- 재현 절차 및 로그 파일 규격은 [verification.md](./verification.md)를 참고한다.
 - StepA 대규모 시드 생성: `python -m app.db reset`
   - Seeded data in 6.56s: departments=12, professors=100, students=10000, courses=500
 - StepB 시드 스모크 테스트: `python -m unittest src/tests/test_seed_smoke.py`
