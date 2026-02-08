@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 
-from .db import init_db
+from .db import ensure_seeded
 from .routers import courses, enrollments, me, professors, students
 
 app = FastAPI(title="Course Registration API")
@@ -12,7 +12,9 @@ app = FastAPI(title="Course Registration API")
 
 @app.on_event("startup")
 def on_startup() -> None:
-    init_db()
+    duration = ensure_seeded()
+    app.state.seed_duration = duration
+    app.state.data_ready = True
 
 
 @app.exception_handler(HTTPException)

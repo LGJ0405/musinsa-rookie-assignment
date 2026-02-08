@@ -19,6 +19,7 @@
 ## 1) Health Check
 ### GET `/health`
 - 응답 200
+  - 200 OK 반환 시 초기 데이터 생성이 완료된 상태임을 의미한다.
 ```json
 { "status": "ok" }
 ```

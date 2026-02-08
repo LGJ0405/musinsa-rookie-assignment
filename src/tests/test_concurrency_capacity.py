@@ -21,10 +21,12 @@ class ConcurrencyCapacityTest(unittest.TestCase):
     def test_capacity_one_concurrency(self) -> None:
         conn = db.get_connection()
         with conn:
-            course_id = conn.execute("SELECT id FROM courses WHERE code = 'CS201'").fetchone()["id"]
+            course_id = conn.execute(
+                "SELECT id FROM courses WHERE capacity = 1 ORDER BY id LIMIT 1"
+            ).fetchone()["id"]
             student_ids = [
                 row["id"]
-                for row in conn.execute("SELECT id FROM students ORDER BY id LIMIT 3").fetchall()
+                for row in conn.execute("SELECT id FROM students ORDER BY id LIMIT 100").fetchall()
             ]
         conn.close()
 

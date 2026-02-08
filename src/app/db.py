@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import random
 import sqlite3
+import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Iterable
 
 from .settings import DATA_DIR, DB_PATH, SQLITE_BUSY_TIMEOUT_MS
@@ -103,162 +104,262 @@ DROP TABLE IF EXISTS professors;
 DROP TABLE IF EXISTS departments;
 """
 
+REQUIRED_COUNTS = {
+    "departments": 10,
+    "courses": 500,
+    "students": 10_000,
+    "professors": 100,
+}
+
+DEPARTMENT_TOKENS = [
+    ("컴퓨터공학과", "CSE"),
+    ("전자공학과", "EEE"),
+    ("기계공학과", "MEC"),
+    ("산업공학과", "IND"),
+    ("경영학과", "BUS"),
+    ("경제학과", "ECO"),
+    ("통계학과", "STA"),
+    ("수학과", "MAT"),
+    ("물리학과", "PHY"),
+    ("화학과", "CHE"),
+    ("생명과학과", "BIO"),
+    ("심리학과", "PSY"),
+]
+
+SURNAMES = ["김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권", "황"]
+GIVEN_NAMES = [
+    "민준",
+    "서연",
+    "지후",
+    "서준",
+    "하은",
+    "지민",
+    "도윤",
+    "윤서",
+    "지우",
+    "예준",
+    "수아",
+    "준우",
+    "유진",
+    "지현",
+    "시윤",
+    "채원",
+    "현우",
+    "지훈",
+    "나연",
+    "예린",
+    "민지",
+    "서현",
+    "준서",
+    "수빈",
+    "태현",
+    "은지",
+    "민수",
+    "영준",
+    "하준",
+    "다은",
+]
+
+COURSE_TITLES = [
+    "자료구조",
+    "알고리즘",
+    "운영체제",
+    "데이터베이스",
+    "컴퓨터네트워크",
+    "인공지능",
+    "머신러닝",
+    "소프트웨어공학",
+    "회로이론",
+    "전자기학",
+    "디지털공학",
+    "제어공학",
+    "경영학원론",
+    "재무관리",
+    "마케팅원론",
+    "미시경제",
+    "거시경제",
+    "통계학개론",
+    "확률론",
+    "선형대수",
+    "미분적분학",
+    "일반물리학",
+    "일반화학",
+    "생명과학개론",
+    "공업수학",
+    "실험물리",
+    "화학실험",
+    "인지심리학",
+    "발달심리학",
+    "산업심리학",
+]
+
+LEVEL_SUFFIX = ["I", "II", "III", "심화", "응용", "실습"]
+DAY_PAIRS = [("MON", "WED"), ("TUE", "THU"), ("MON", "THU"), ("TUE", "FRI"), ("WED", "FRI")]
+TIME_SLOTS = [("09:00", "10:15"), ("10:30", "11:45"), ("13:00", "14:15"), ("14:30", "15:45"), ("16:00", "17:15")]
+
 
 def init_db() -> None:
     conn = get_connection()
-    with conn:
-        conn.executescript(SCHEMA_SQL)
+    try:
+        with conn:
+            conn.executescript(SCHEMA_SQL)
+    finally:
+        conn.close()
 
 
-def seed_db() -> None:
+def _has_required_counts(conn: sqlite3.Connection) -> bool:
+    for table, minimum in REQUIRED_COUNTS.items():
+        count = conn.execute(f"SELECT COUNT(*) AS cnt FROM {table}").fetchone()["cnt"]
+        if count < minimum:
+            return False
+    return True
+
+
+def _generate_name_pool(count: int, rng: random.Random) -> list[str]:
+    names: list[str] = []
+    while len(names) < count:
+        surname = rng.choice(SURNAMES)
+        given = rng.choice(GIVEN_NAMES)
+        names.append(f"{surname}{given}")
+    return names
+
+
+def seed_db(force: bool = False) -> float:
     conn = get_connection()
-    with conn:
-        existing = conn.execute("SELECT COUNT(*) AS cnt FROM courses").fetchone()["cnt"]
-        if existing > 0:
-            return
+    start = time.perf_counter()
+    try:
+        with conn:
+            if not force and _has_required_counts(conn):
+                print("Seed skipped: required counts already satisfied.")
+                return 0.0
 
-        departments = ["CS", "EE"]
-        for name in departments:
-            conn.execute("INSERT INTO departments (name) VALUES (?)", (name,))
+            conn.executescript(DROP_SQL)
+            conn.executescript(SCHEMA_SQL)
 
-        dept_map = {
-            row["name"]: row["id"]
-            for row in conn.execute("SELECT id, name FROM departments")
-        }
+            rng = random.Random(42)
 
-        professors = [
-            ("Park", dept_map["CS"]),
-            ("Lee", dept_map["EE"]),
-        ]
-        conn.executemany(
-            "INSERT INTO professors (name, department_id) VALUES (?, ?)", professors
+            dept_rows = [(name,) for name, _ in DEPARTMENT_TOKENS]
+            conn.executemany("INSERT INTO departments (name) VALUES (?)", dept_rows)
+
+            dept_map = {
+                row["name"]: row["id"]
+                for row in conn.execute("SELECT id, name FROM departments")
+            }
+            dept_codes = {name: code for name, code in DEPARTMENT_TOKENS}
+            dept_ids = list(dept_map.values())
+
+            professor_names = _generate_name_pool(REQUIRED_COUNTS["professors"], rng)
+            professor_rows = [
+                (name, dept_ids[idx % len(dept_ids)]) for idx, name in enumerate(professor_names)
+            ]
+            conn.executemany(
+                "INSERT INTO professors (name, department_id) VALUES (?, ?)", professor_rows
+            )
+
+            student_names = _generate_name_pool(REQUIRED_COUNTS["students"], rng)
+            student_rows = [(name, 18) for name in student_names]
+            conn.executemany(
+                "INSERT INTO students (name, max_credits) VALUES (?, ?)", student_rows
+            )
+
+            semesters = [
+                ("2026 Spring", "2026-03-01", "2026-06-30"),
+                ("2026 Fall", "2026-09-01", "2026-12-15"),
+            ]
+            conn.executemany(
+                "INSERT INTO semesters (name, start_date, end_date) VALUES (?, ?, ?)",
+                semesters,
+            )
+            semester_id = conn.execute(
+                "SELECT id FROM semesters ORDER BY start_date DESC LIMIT 1"
+            ).fetchone()["id"]
+
+            professor_by_dept: dict[int, list[int]] = {dept_id: [] for dept_id in dept_ids}
+            for row in conn.execute("SELECT id, department_id FROM professors"):
+                professor_by_dept[row["department_id"]].append(row["id"])
+
+            courses: list[tuple[int, int, int, str, str, int, int]] = []
+            course_per_dept = REQUIRED_COUNTS["courses"] // len(dept_ids)
+            extra = REQUIRED_COUNTS["courses"] % len(dept_ids)
+            course_index = 0
+            for dept_name, dept_id in dept_map.items():
+                target = course_per_dept + (1 if extra > 0 else 0)
+                if extra > 0:
+                    extra -= 1
+                for i in range(target):
+                    title = COURSE_TITLES[(course_index + i) % len(COURSE_TITLES)]
+                    suffix = LEVEL_SUFFIX[(course_index + i) % len(LEVEL_SUFFIX)]
+                    name = f"{title} {suffix}"
+                    code = f"{dept_codes[dept_name]}{100 + (course_index + i) % 900:03d}"
+                    credits = rng.choices([1, 2, 3], weights=[2, 3, 5], k=1)[0]
+                    capacity = (
+                        1 if (course_index + i) % 50 == 0 else rng.choice([20, 30, 40, 50, 60])
+                    )
+                    professor_id = rng.choice(professor_by_dept[dept_id])
+                    courses.append(
+                        (dept_id, professor_id, semester_id, code, name, credits, capacity)
+                    )
+                course_index += target
+
+            conn.executemany(
+                """
+                INSERT INTO courses (
+                  department_id, professor_id, semester_id, code, name, credits, capacity
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                courses,
+            )
+
+            course_rows = conn.execute("SELECT id FROM courses ORDER BY id").fetchall()
+            course_times: list[tuple[int, str, str, str]] = []
+            for idx, row in enumerate(course_rows):
+                day_pair = DAY_PAIRS[idx % len(DAY_PAIRS)]
+                slot = TIME_SLOTS[idx % len(TIME_SLOTS)]
+                course_times.append((row["id"], day_pair[0], slot[0], slot[1]))
+                course_times.append((row["id"], day_pair[1], slot[0], slot[1]))
+
+            conn.executemany(
+                """
+                INSERT INTO course_times (course_id, day_of_week, start_time, end_time)
+                VALUES (?, ?, ?, ?)
+                """,
+                course_times,
+            )
+
+            counts = {
+                "departments": conn.execute("SELECT COUNT(*) AS cnt FROM departments").fetchone()["cnt"],
+                "professors": conn.execute("SELECT COUNT(*) AS cnt FROM professors").fetchone()["cnt"],
+                "students": conn.execute("SELECT COUNT(*) AS cnt FROM students").fetchone()["cnt"],
+                "courses": conn.execute("SELECT COUNT(*) AS cnt FROM courses").fetchone()["cnt"],
+            }
+
+        duration = time.perf_counter() - start
+        print(
+            f"Seeded data in {duration:.2f}s: "
+            f"departments={counts['departments']}, "
+            f"professors={counts['professors']}, "
+            f"students={counts['students']}, "
+            f"courses={counts['courses']}"
         )
-
-        students = [
-            ("Kim", 18),
-            ("Choi", 18),
-            ("Han", 18),
-        ]
-        conn.executemany(
-            "INSERT INTO students (name, max_credits) VALUES (?, ?)", students
-        )
-
-        semesters = [
-            ("2026 Spring", "2026-03-01", "2026-06-30"),
-            ("2026 Fall", "2026-09-01", "2026-12-15"),
-        ]
-        conn.executemany(
-            "INSERT INTO semesters (name, start_date, end_date) VALUES (?, ?, ?)",
-            semesters,
-        )
-
-        semester_map = {
-            row["name"]: row["id"]
-            for row in conn.execute("SELECT id, name FROM semesters")
-        }
-
-        professor_map = {
-            row["name"]: row["id"]
-            for row in conn.execute("SELECT id, name FROM professors")
-        }
-
-        courses = [
-            (
-                dept_map["CS"],
-                professor_map["Park"],
-                semester_map["2026 Spring"],
-                "CS101",
-                "Intro to CS",
-                3,
-                2,
-            ),
-            (
-                dept_map["CS"],
-                professor_map["Park"],
-                semester_map["2026 Spring"],
-                "CS102",
-                "Data Structures",
-                3,
-                2,
-            ),
-            (
-                dept_map["CS"],
-                professor_map["Park"],
-                semester_map["2026 Spring"],
-                "CS201",
-                "Algorithms",
-                3,
-                1,
-            ),
-            (
-                dept_map["EE"],
-                professor_map["Lee"],
-                semester_map["2026 Spring"],
-                "EE101",
-                "Circuits",
-                3,
-                2,
-            ),
-            (
-                dept_map["EE"],
-                professor_map["Lee"],
-                semester_map["2026 Spring"],
-                "EE201",
-                "Signals",
-                3,
-                2,
-            ),
-        ]
-        conn.executemany(
-            """
-            INSERT INTO courses (
-              department_id, professor_id, semester_id, code, name, credits, capacity
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            courses,
-        )
-
-        course_map = {
-            row["code"]: row["id"]
-            for row in conn.execute("SELECT id, code FROM courses")
-        }
-
-        course_times = [
-            (course_map["CS101"], "MON", "09:00", "10:15"),
-            (course_map["CS101"], "WED", "09:00", "10:15"),
-            (course_map["CS102"], "MON", "09:30", "10:45"),
-            (course_map["CS102"], "WED", "09:30", "10:45"),
-            (course_map["CS201"], "TUE", "13:00", "14:15"),
-            (course_map["CS201"], "THU", "13:00", "14:15"),
-            (course_map["EE101"], "MON", "10:30", "11:45"),
-            (course_map["EE101"], "WED", "10:30", "11:45"),
-            (course_map["EE201"], "WED", "09:00", "10:15"),
-            (course_map["EE201"], "FRI", "09:00", "10:15"),
-        ]
-        conn.executemany(
-            """
-            INSERT INTO course_times (course_id, day_of_week, start_time, end_time)
-            VALUES (?, ?, ?, ?)
-            """,
-            course_times,
-        )
+        return duration
+    finally:
+        conn.close()
 
 
 def reset_db() -> None:
     if DB_PATH.exists():
         try:
             DB_PATH.unlink()
-            init_db()
-            seed_db()
+            seed_db(force=True)
             return
         except PermissionError:
             pass
+    seed_db(force=True)
 
-    conn = get_connection()
-    with conn:
-        conn.executescript(DROP_SQL)
+
+def ensure_seeded() -> float:
     init_db()
-    seed_db()
+    return seed_db(force=False)
 
 
 @dataclass(frozen=True)
@@ -271,27 +372,30 @@ class CourseSummary:
 
 def fetch_course_summaries() -> Iterable[CourseSummary]:
     conn = get_connection()
-    rows = conn.execute(
-        """
-        SELECT
-          c.code,
-          c.capacity,
-          COUNT(e.id) AS enrolled_count,
-          GROUP_CONCAT(ct.day_of_week || ' ' || ct.start_time || '-' || ct.end_time, ', ') AS times
-        FROM courses c
-        LEFT JOIN enrollments e ON e.course_id = c.id
-        LEFT JOIN course_times ct ON ct.course_id = c.id
-        GROUP BY c.id
-        ORDER BY c.code
-        """
-    ).fetchall()
-    for row in rows:
-        yield CourseSummary(
-            code=row["code"],
-            capacity=row["capacity"],
-            enrolled_count=row["enrolled_count"],
-            times=row["times"] or "",
-        )
+    try:
+        rows = conn.execute(
+            """
+            SELECT
+              c.code,
+              c.capacity,
+              COUNT(e.id) AS enrolled_count,
+              GROUP_CONCAT(ct.day_of_week || ' ' || ct.start_time || '-' || ct.end_time, ', ') AS times
+            FROM courses c
+            LEFT JOIN enrollments e ON e.course_id = c.id
+            LEFT JOIN course_times ct ON ct.course_id = c.id
+            GROUP BY c.id
+            ORDER BY c.code
+            """
+        ).fetchall()
+        for row in rows:
+            yield CourseSummary(
+                code=row["code"],
+                capacity=row["capacity"],
+                enrolled_count=row["enrolled_count"],
+                times=row["times"] or "",
+            )
+    finally:
+        conn.close()
 
 
 def print_course_summary() -> None:
@@ -314,13 +418,11 @@ def main() -> None:
     if args.command == "init":
         init_db()
     elif args.command == "seed":
-        init_db()
-        seed_db()
+        seed_db(force=False)
     elif args.command == "reset":
         reset_db()
     elif args.command == "summary":
-        init_db()
-        seed_db()
+        seed_db(force=False)
         print_course_summary()
 
 

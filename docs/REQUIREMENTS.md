@@ -56,8 +56,9 @@
 - `journal_mode=WAL`을 사용해 읽기/쓰기 동시성을 개선한다.
 - SQLite는 단일 writer 제약이 있으므로 고부하 환경에서는 DB 락 대기/지연이 발생할 수 있다.
   - 보완 전략: 프로덕션에서는 PostgreSQL 같은 다중 writer DB로 전환하거나, 신청 요청을 큐로 직렬화한다.
-- DB 초기화 정책: `python -m app.db reset`으로 수동 초기화/시드를 수행한다.
-  이는 반복 실행 시 테스트 재현성과 enrolled_count 정합성을 보장하기 위한 운영 절차이다.
+- DB 초기화 정책: 서버 시작 시 데이터가 없거나 최소 규모에 미달하면 DB를 초기화하고 시드 데이터를 자동 생성한다.
+  최소 규모를 이미 만족하면 재생성을 건너뛰어 실행 시간을 단축한다.
+- 서버가 `/health`에 200을 반환하는 시점은 시드 완료 이후로 정의한다.
 
 ## F. 구현 범위
 - MVP
@@ -69,30 +70,21 @@
 - 제외
   - 로그인/권한, 대기열, 선수과목, 수강기간 제한, 성적/수강료, 감사 이력
 
-## 데이터 규모에 대한 범위 결정
+## 데이터 생성/규모 정책
 
-문제 원문에서는 대규모 데이터 생성을 요구한다(학생 10,000명, 강좌 500개 이상).
-그러나 본 과제에서는 제한된 시간 내 핵심 로직(정원/학점/시간표/동시성)의
-정합성과 재현 가능성을 우선 검증하기 위해,
-데이터 규모를 축소한 시나리오 기반 구현을 선택했다.
-
-대규모 데이터 생성 로직은 실제 프로덕션 환경에서의 확장 포인트로 간주하며,
-본 과제에서는 구현 대신 설계 및 동시성 전략 설명으로 대체한다.
+- 데이터 규모: Department 10+, Professor 100+, Student 10,000+, Course 500+를 기본으로 생성한다.
+- 생성 방식: 정적 파일(SQL/CSV)을 사용하지 않고 실행 시 로직으로 동적 생성한다.
+  - 소규모 토큰(학과명/이름 목록)은 코드에 포함한다.
+- 데이터 품질: "User1", "Course1" 같은 무의미한 데이터 대신 현실적인 이름/과목명을 조합한다.
+- 성능: 단일 트랜잭션과 `executemany`를 사용해 1분 이내 생성 완료를 목표로 한다.
 
 
 ## 검증 로그
-- Step3 DB 시드 확인: `python -m app.db summary` 실행
-  - CS101 capacity=2 enrolled=0 times=MON 09:00-10:15, WED 09:00-10:15
-  - CS102 capacity=2 enrolled=0 times=MON 09:30-10:45, WED 09:30-10:45
-  - CS201 capacity=1 enrolled=0 times=TUE 13:00-14:15, THU 13:00-14:15
-  - EE101 capacity=2 enrolled=0 times=MON 10:30-11:45, WED 10:30-11:45
-  - EE201 capacity=2 enrolled=0 times=WED 09:00-10:15, FRI 09:00-10:15
-- Step4 스모크 테스트: 서버 실행 후 curl 호출
-  - GET /health -> {"status":"ok"}
-  - GET /students -> 3명 반환
-  - GET /courses -> 5개 강좌 반환 (정원/현재인원/시간 포함)
-  - GET /me/timetable (X-Student-Id: 1) -> semester_id=2, items=[]
-- Step5 규칙 테스트: `python -m unittest src/tests/test_enrollment_rules.py`
+- StepA 대규모 시드 생성: `python -m app.db reset`
+  - Seeded data in 6.56s: departments=12, professors=100, students=10000, courses=500
+- StepB 시드 스모크 테스트: `python -m unittest src/tests/test_seed_smoke.py`
+  - /health 200 이후 학생/교수/강좌 최소 수량 이상 확인
+- StepC 규칙 테스트: `python -m unittest src/tests/test_enrollment_rules.py`
   - credit limit / time conflict / duplicate / cancel 검증 OK
-- Step6 동시성 테스트: `python -m unittest src/tests/test_concurrency_capacity.py`
-  - success=1 fail=2 enrolled_count=1
+- StepD 동시성 테스트(100 동시): `python -m unittest src/tests/test_concurrency_capacity.py`
+  - success=1 fail=99 enrolled_count=1
