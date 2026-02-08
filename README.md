@@ -10,16 +10,16 @@
 
 ## DB 초기화/시드
 초기화
-`python -m src.app.db init`
+`$env:PYTHONPATH=\"src\"; python -m app.db init`
 시드
-`python -m src.app.db seed`
+`$env:PYTHONPATH=\"src\"; python -m app.db seed`
 전체 재생성
-`python -m src.app.db reset`
+`$env:PYTHONPATH=\"src\"; python -m app.db reset`
 
 DB 파일은 `./data/app.db`에 생성됩니다.
 
 ## 서버 실행
-`uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8000`
+`uvicorn app.main:app --app-dir src --reload --host 0.0.0.0 --port 8000`
 
 ## 접속 정보
 - API Base URL: `http://localhost:8000`

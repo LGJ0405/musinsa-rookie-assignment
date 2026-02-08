@@ -66,4 +66,9 @@
   - 로그인/권한, 대기열, 선수과목, 수강기간 제한, 성적/수강료, 감사 이력
 
 ## 검증 로그
-- 없음
+- Step3 DB 시드 확인: `python -m app.db summary` 실행
+  - CS101 capacity=2 enrolled=0 times=MON 09:00-10:15, WED 09:00-10:15
+  - CS102 capacity=2 enrolled=0 times=MON 09:30-10:45, WED 09:30-10:45
+  - CS201 capacity=1 enrolled=0 times=TUE 13:00-14:15, THU 13:00-14:15
+  - EE101 capacity=2 enrolled=0 times=MON 10:30-11:45, WED 10:30-11:45
+  - EE201 capacity=2 enrolled=0 times=WED 09:00-10:15, FRI 09:00-10:15

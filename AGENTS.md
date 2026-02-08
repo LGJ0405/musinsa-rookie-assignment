@@ -22,3 +22,20 @@
 ## 문서 업데이트 규칙
 - 코드 변경 시 `README.md`, `docs/REQUIREMENTS.md`, `docs/API.md`의 정합성을 유지한다.
 - 정책 변경은 반드시 `docs/REQUIREMENTS.md`에 근거와 함께 기록한다.
+
+## 커밋 메시지 규칙
+
+본 프로젝트는 다음과 같은 커밋 메시지 규칙을 사용합니다.
+
+형식:
+[타입] 작업 내용 요약
+
+타입 목록:
+- init: 프로젝트 초기 설정
+- docs: 문서 작성 및 수정
+- feat: 기능 추가
+- fix: 버그 수정
+- refactor: 리팩토링
+- test: 테스트 코드 추가
+- prompt: AI 프롬프트 이력 관리
+- chore: 빌드, 설정 변경
