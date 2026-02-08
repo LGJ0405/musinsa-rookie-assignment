@@ -3,6 +3,7 @@
 ## 공통
 - Base URL: `http://localhost:8000`
 - Content-Type: `application/json`
+- 인증 헤더: `X-Student-Id`는 내 시간표/수강신청/취소에 필수
 
 ### 에러 응답 형식
 ```json
@@ -22,118 +23,119 @@
 { "status": "ok" }
 ```
 
-## 2) 학생
-### POST `/students`
-- 요청
-```json
-{ "name": "Kim", "max_credits": 18 }
-```
-- 응답 201
-```json
-{ "id": 1, "name": "Kim", "max_credits": 18 }
-```
-
-### GET `/students/{student_id}`
+## 2) 학생 목록
+### GET `/students`
 - 응답 200
 ```json
-{ "id": 1, "name": "Kim", "max_credits": 18 }
+[
+  { "id": 1, "name": "Kim", "max_credits": 18 }
+]
 ```
-- 응답 404: `STUDENT_NOT_FOUND`
 
-### GET `/students/{student_id}/enrollments`
+## 3) 교수 목록
+### GET `/professors`
+- 응답 200
+```json
+[
+  { "id": 1, "name": "Park", "department_id": 1, "department_name": "CS" }
+]
+```
+
+## 4) 강좌 목록
+### GET `/courses`
+- Query Params
+| name | type | required | description |
+| --- | --- | --- | --- |
+| department_id | int | no | 학과 필터 |
+| semester_id | int | no | 학기 필터 |
+
 - 응답 200
 ```json
 [
   {
     "id": 10,
-    "section_id": 3,
-    "course_code": "CS101",
-    "term_id": 1,
-    "created_at": "2026-02-08T12:00:00Z"
-  }
-]
-```
-
-## 3) 학기
-### POST `/terms`
-- 요청
-```json
-{ "name": "2026 Spring", "start_date": "2026-03-01", "end_date": "2026-06-30" }
-```
-- 응답 201
-```json
-{ "id": 1, "name": "2026 Spring", "start_date": "2026-03-01", "end_date": "2026-06-30" }
-```
-
-## 4) 과목
-### POST `/courses`
-- 요청
-```json
-{ "code": "CS101", "name": "Intro to CS", "credits": 3 }
-```
-- 응답 201
-```json
-{ "id": 1, "code": "CS101", "name": "Intro to CS", "credits": 3 }
-```
-- 응답 409: `COURSE_CODE_CONFLICT`
-
-## 5) 분반
-### POST `/sections`
-- 요청
-```json
-{
-  "course_id": 1,
-  "term_id": 1,
-  "section_no": "001",
-  "capacity": 30,
-  "schedule": [
-    { "day": "MON", "start": "09:00", "end": "10:15" },
-    { "day": "WED", "start": "09:00", "end": "10:15" }
-  ]
-}
-```
-- 응답 201
-```json
-{ "id": 3, "course_id": 1, "term_id": 1, "section_no": "001", "capacity": 30 }
-```
-
-### GET `/sections`
-- Query Params: `term_id`, `course_code`, `available_only`(true|false)
-- 응답 200
-```json
-[
-  {
-    "id": 3,
-    "course_id": 1,
-    "course_code": "CS101",
-    "term_id": 1,
-    "section_no": "001",
+    "code": "CS101",
+    "name": "Intro to CS",
+    "credits": 3,
+    "department_id": 1,
+    "department_name": "CS",
+    "professor_id": 1,
+    "professor_name": "Park",
+    "semester_id": 1,
     "capacity": 30,
     "enrolled_count": 12,
     "schedule": [
-      { "day": "MON", "start": "09:00", "end": "10:15" }
+      { "day": "MON", "start": "09:00", "end": "10:15" },
+      { "day": "WED", "start": "09:00", "end": "10:15" }
     ]
   }
 ]
 ```
 
+## 5) 내 시간표
+### GET `/me/timetable`
+- Headers
+| name | required | description |
+| --- | --- | --- |
+| X-Student-Id | yes | 학생 ID |
+
+- Query Params
+| name | type | required | description |
+| --- | --- | --- | --- |
+| semester_id | int | no | 미지정 시 시작일이 가장 최근인 학기 사용 |
+
+- 응답 200
+```json
+{
+  "student_id": 1,
+  "semester_id": 1,
+  "total_credits": 6,
+  "items": [
+    {
+      "enrollment_id": 100,
+      "course_id": 10,
+      "code": "CS101",
+      "name": "Intro to CS",
+      "credits": 3,
+      "schedule": [
+        { "day": "MON", "start": "09:00", "end": "10:15" }
+      ]
+    }
+  ]
+}
+```
+
 ## 6) 수강신청
 ### POST `/enrollments`
+- Headers
+| name | required | description |
+| --- | --- | --- |
+| X-Student-Id | yes | 학생 ID |
+
 - 요청
 ```json
-{ "student_id": 1, "section_id": 3 }
+{ "course_id": 10 }
 ```
 - 응답 201
 ```json
-{ "id": 10, "student_id": 1, "section_id": 3, "created_at": "2026-02-08T12:00:00Z" }
+{ "id": 100, "student_id": 1, "course_id": 10, "semester_id": 1, "created_at": "2026-02-08T12:00:00Z" }
 ```
-- 응답 404: `STUDENT_NOT_FOUND`, `SECTION_NOT_FOUND`
+
+- 응답 400: `INVALID_STUDENT_HEADER`, `VALIDATION_ERROR`
+- 응답 404: `COURSE_NOT_FOUND`, `STUDENT_NOT_FOUND`, `SEMESTER_NOT_FOUND`
 - 응답 409:
   - `CAPACITY_FULL`
-  - `DUPLICATE_COURSE`
+  - `DUPLICATE_ENROLLMENT`
   - `TIME_CONFLICT`
   - `CREDIT_LIMIT_EXCEEDED`
 
+## 7) 수강취소
 ### DELETE `/enrollments/{enrollment_id}`
+- Headers
+| name | required | description |
+| --- | --- | --- |
+| X-Student-Id | yes | 학생 ID |
+
 - 응답 204
+- 응답 403: `FORBIDDEN_ENROLLMENT_CANCEL`
 - 응답 404: `ENROLLMENT_NOT_FOUND`
