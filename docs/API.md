@@ -104,6 +104,8 @@
   ]
 }
 ```
+- 응답 400: `INVALID_STUDENT_HEADER`
+- 응답 404: `STUDENT_NOT_FOUND`, `SEMESTER_NOT_FOUND`
 
 ## 6) 수강신청
 ### POST `/enrollments`

@@ -19,6 +19,14 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
+def get_db() -> sqlite3.Connection:
+    conn = get_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS departments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

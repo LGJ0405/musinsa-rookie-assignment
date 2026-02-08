@@ -72,3 +72,8 @@
   - CS201 capacity=1 enrolled=0 times=TUE 13:00-14:15, THU 13:00-14:15
   - EE101 capacity=2 enrolled=0 times=MON 10:30-11:45, WED 10:30-11:45
   - EE201 capacity=2 enrolled=0 times=WED 09:00-10:15, FRI 09:00-10:15
+- Step4 스모크 테스트: 서버 실행 후 curl 호출
+  - GET /health -> {"status":"ok"}
+  - GET /students -> 3명 반환
+  - GET /courses -> 5개 강좌 반환 (정원/현재인원/시간 포함)
+  - GET /me/timetable (X-Student-Id: 1) -> semester_id=2, items=[]
