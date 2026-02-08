@@ -54,6 +54,8 @@
 - 같은 트랜잭션에서 정원, 중복, 학점, 시간표를 검증하고 조건을 만족할 때만 Enrollment를 생성한다.
 - DB 제약(유니크)과 애플리케이션 검증을 함께 사용해 중복 신청을 방지한다.
 - `journal_mode=WAL`을 사용해 읽기/쓰기 동시성을 개선한다.
+- SQLite는 단일 writer 제약이 있으므로 고부하 환경에서는 DB 락 대기/지연이 발생할 수 있다.
+  - 보완 전략: 프로덕션에서는 PostgreSQL 같은 다중 writer DB로 전환하거나, 신청 요청을 큐로 직렬화한다.
 
 ## F. 구현 범위
 - MVP
@@ -79,3 +81,5 @@
   - GET /me/timetable (X-Student-Id: 1) -> semester_id=2, items=[]
 - Step5 규칙 테스트: `python -m unittest src/tests/test_enrollment_rules.py`
   - credit limit / time conflict / duplicate / cancel 검증 OK
+- Step6 동시성 테스트: `python -m unittest src/tests/test_concurrency_capacity.py`
+  - success=1 fail=2 enrolled_count=1
