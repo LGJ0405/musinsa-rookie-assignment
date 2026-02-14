@@ -47,10 +47,10 @@
 ## 4) 강좌 목록
 ### GET `/courses`
 - Query Params
-| name | type | required | description |
-| --- | --- | --- | --- |
-| department_id | int | no | 학과 필터 |
-| semester_id | int | no | 학기 필터 |
+  | name | type | required | description |
+  | --- | --- | --- | --- |
+  | department_id | int | no | 학과 필터 |
+  | semester_id | int | no | 학기 필터 |
 
 - 응답 200
 ```json
@@ -78,14 +78,14 @@
 ## 5) 내 시간표
 ### GET `/me/timetable`
 - Headers
-| name | required | description |
-| --- | --- | --- |
-| X-Student-Id | yes | 학생 ID |
+  | name | required | description |
+  | --- | --- | --- |
+  | X-Student-Id | yes | 학생 ID |
 
 - Query Params
-| name | type | required | description |
-| --- | --- | --- | --- |
-| semester_id | int | no | 미지정 시 시작일이 가장 최근인 학기 사용 |
+  | name | type | required | description |
+  | --- | --- | --- | --- |
+  | semester_id | int | no | 미지정 시 시작일이 가장 최근인 학기 사용 |
 
 - 응답 200
 ```json
@@ -113,9 +113,9 @@
 ## 6) 수강신청
 ### POST `/enrollments`
 - Headers
-| name | required | description |
-| --- | --- | --- |
-| X-Student-Id | yes | 학생 ID |
+  | name | required | description |
+  | --- | --- | --- |
+  | X-Student-Id | yes | 학생 ID |
 
 - 요청
 ```json
@@ -137,9 +137,9 @@
 ## 7) 수강취소
 ### DELETE `/enrollments/{enrollment_id}`
 - Headers
-| name | required | description |
-| --- | --- | --- |
-| X-Student-Id | yes | 학생 ID |
+  | name | required | description |
+  | --- | --- | --- |
+  | X-Student-Id | yes | 학생 ID |
 
 - 응답 204
 - 응답 400: `INVALID_STUDENT_HEADER`
